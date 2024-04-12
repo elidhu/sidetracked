@@ -1,6 +1,13 @@
-# Sidetracked: Introducing the Project and Getting Setup
++++
+draft = true
+title = "Sidetracked: Introducing the Project and Getting Setup"
+[taxonomies]
+tags = ["sidetracked", "rust"]
+[extra]
+toc = true
++++
 
-> Sidetracked is going to be, yep you guessed it, a todo application. We are going to right it in Rust (of course). We are going to draw _loosely_ from [Domain-driven Design](https://en.wikipedia.org/wiki/Domain-driven_design) and [Hexagonal Architecture](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)) for our project architecture. This will be a fully features application, we are going to write our Backend using [Axum](https://docs.rs/axum/latest/axum/), and the Frontend will be [Htmx](https://htmx.org/).<!--more-->
+> Sidetracked is going to be, yep you guessed it, a todo application. We are going to right it in Rust (of course). We are going to draw _loosely_ from [Domain-driven Design](https://en.wikipedia.org/wiki/Domain-driven_design) and [Hexagonal Architecture](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)) for our project architecture. This will be a fully featured application, we are going to write our Backend using [Axum](https://docs.rs/axum/latest/axum/), and the Frontend will be [Htmx](https://htmx.org/).<!--more-->
 
 ## A Very Loose Roadmap / Feature List
 
