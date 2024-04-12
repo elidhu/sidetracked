@@ -5,7 +5,7 @@ title = "Sidetracked: Introducing the Project and Getting Setup"
 tags = ["sidetracked", "rust"]
 [extra]
 toc = true
-repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-10-sidetracked-introducing-the-project-and-getting-setup"
+repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-10_sidetracked-introducing-the-project-and-getting-setup"
 +++
 
 > Sidetracked is, yep you guessed it, a todo application. We are going to write it in Rust (of course) and we are going to draw _loosely_ from [Domain-driven Design](https://en.wikipedia.org/wiki/Domain-driven_design) and [Hexagonal Architecture](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)) for our project architecture. This will be a fully featured application, including a Backend using [Axum](https://docs.rs/axum/latest/axum/), and a Frontend using [Htmx](https://htmx.org/).<!-- more -->
