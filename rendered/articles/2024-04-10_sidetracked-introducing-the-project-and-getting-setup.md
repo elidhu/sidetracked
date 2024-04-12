@@ -1,11 +1,11 @@
 +++
-draft = true
+draft = false
 title = "Sidetracked: Introducing the Project and Getting Setup"
 [taxonomies]
 tags = ["sidetracked", "rust"]
 [extra]
 toc = true
-repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-10-sidetracked-introducing-the-project-and-getting-setup"
+repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-10_sidetracked-introducing-the-project-and-getting-setup"
 +++
 
 > Sidetracked is, yep you guessed it, a todo application. We are going to write it in Rust (of course) and we are going to draw _loosely_ from [Domain-driven Design](https://en.wikipedia.org/wiki/Domain-driven_design) and [Hexagonal Architecture](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software)) for our project architecture. This will be a fully featured application, including a Backend using [Axum](https://docs.rs/axum/latest/axum/), and a Frontend using [Htmx](https://htmx.org/).<!-- more -->
@@ -268,7 +268,7 @@ cargo watch -x run -w sidetracked
 
 You should now see some output in your terminal indicating that the server is listening on `127.0.0.1:3000`. We test our brand new servcer by hitting it with `curl -i http://localhost:3000` from another terminal. You should see something like this:
 
-```shell
+```txt
 ❯ curl -i http://localhost:3000
 HTTP/1.1 200 OK
 content-type: text/plain; charset=utf-8
@@ -280,7 +280,7 @@ Hello, World!
 
 Perfect, as expected we get a `200` status code and a `Hello World` in the body. Now from the terminal that is running the server you should see output from the logger. Something like this:
 
-```shell
+```txt
 ❯ cargo watch -x run -w sidetracked
 [Running 'cargo run']
     Finished dev [unoptimized + debuginfo] target(s) in 0.03s
