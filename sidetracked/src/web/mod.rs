@@ -1,0 +1,3 @@
+// @<modapplication
+pub mod application;
+// >@
