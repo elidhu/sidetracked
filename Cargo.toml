@@ -1,0 +1,5 @@
+# @<cargotomlworkspace
+[workspace]
+resolver = "2"
+members = ["sidetracked"]
+# >@
