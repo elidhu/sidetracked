@@ -91,7 +91,7 @@ Make your `Cargo.toml` look like the following. To be clear, this is the `Cargo.
 
 > As an artifact of how I stitch together my articles, the code snippets will be in their "end-of-article" form. For example, in the above snippet we have all of the dependencies I have added, not necessarily the ones I added in this step.
 
-Now let's set up a few directories, I did say minimal, but I don't want to do any refactoring _during_ the article, we'll save that for future articles if necessary.
+Now let's set up a few directories, I did say minimal, but I don't want to do too much refactoring _during_ the article, we'll save that for future articles if necessary.
 
 ```bash
 mkdir -p sidetracked/src/web
@@ -113,9 +113,9 @@ Add the following snippets to their respective files to create two modules. The 
 @@modapplication
 ```
 
-### An Application Struct
+### An Application
 
-Now let's start populating these files with some actual code. A pretty common pattern that I see in the wild that I like is to have an `Application` struct. This is where we hold the configuration for the server, the methods to compose the routes, and the method to run the server.
+Now let's start populating these files with some actual code. A pretty common pattern that I see in the wild that I like is to have an `Application` struct. This will encapsulate all of the composing of routes and middleware, plus any relevant helpers that define the server. This is a good way to keep the `main` function clean and concise.
 
 ```rust
 // @?structapplication.file
@@ -123,7 +123,7 @@ Now let's start populating these files with some actual code. A pretty common pa
 @@structapplication
 ```
 
-The above is pretty self-explanatory so lets get on with the implementation. In Rust, to attach methods to a struct, you need to use an `impl` block. This is where we will put the `new` method, which will create a new `Application` struct, the `router` method that will compose our routes, and the `run` method, which will start the server.
+The above is pretty self-explanatory as currently our `Application` doesn't require any data, so lets get on with the implementation. In Rust, to attach methods to a struct, you need to use an `impl` block where we will define the `router` method that constructs the `Router` for our server.
 
 ```rust
 // @?implapplication.file
@@ -131,21 +131,45 @@ The above is pretty self-explanatory so lets get on with the implementation. In 
 @@implapplication
 ```
 
-> A note about the above. The `TcpListener` we are using is from the `tokio::net` module, not the standard library. This is because we are using Tokio's runtime to run our async code. I have spent far too much time debugging this particular thing when I was first trying to learn Rust, so I thought I would point it out. Tokio does it's best to mimic the stdlib structure, and autocomplete sometimes can lead you astray.
-
-Finally, just one little bit of sugar to make our lives easier. We are going to implement the `Default` [trait](https://doc.rust-lang.org/book/ch10-02-traits.html) for our `Application` struct. This will enable us to easily create a new `Application` with some sensible defaults.
+We will also define an `ApplicationConfig` struct to hold some values that we might want to configure in the future.
 
 ```rust
-// @?impldefaultapplication.file
+// @?structapplicationconfig.file
 
-@@impldefaultapplication
+@@structapplicationconfig
 ```
+
+Finally, just one little bit of sugar to make our lives easier. We are going to implement the `Default` [trait](https://doc.rust-lang.org/book/ch10-02-traits.html) for our `ApplicationConfig` struct. This will enable us to easily create a new `ApplicationConfig` with some sensible defaults.
+
+```rust
+// @?impldefaultapplicationconfig.file
+
+@@impldefaultapplicationconfig
+```
+
+And let's also define a run function to actually run the server using our `Application` and `ApplicationConfig`.
+
+```rust
+// @?run.file
+
+@@run
+```
+
+> A note about the above. The `TcpListener` we are using is from the `tokio::net` module, not the standard library. This is because we are using Tokio's runtime to run our async code. I have spent far too much time debugging this particular thing when I was first trying to learn Rust, so I thought I would point it out. Tokio does it's best to mimic the stdlib structure, and autocomplete sometimes can lead you astray.
 
 So what have we created?
 
-We now have a minimal web server, it has a single route at `/` that will respond with `Hello, World!` when it receives a `GET` request, we have a `run` method that will start the server, and we have an `Application` struct to encapsulate it all.
+We now have a minimal web server, it has a single route at `/` that will respond with `Hello, World!` when it receives a `GET` request, we have a `run` method that will start the server, and we have an `Application` struct to define our routes, and an `ApplicationConfig` to hold our configuration.
 
-Digging a little further, we can see that we are adding a `Layer` to our `Router`. This is how Axum does middleware by leaning on the Tower ecosystem. What we have here is `TraceLayer` from the `tower_http` crate. This is a middleware that will log all requests that come into our server. I consider this to be essential, especially during development, so that we can see what is going on. Maybe in production you log all requests at a load balancer or something, but for now, this is great.
+Let's take a look at our `Router`.
+
+```rust
+// @?applicationrouter.file
+
+@@applicationrouter
+```
+
+We can see that we are adding a `Layer` to our `Router`. This is how Axum does middleware, by leaning on the Tower ecosystem. What we have here is `TraceLayer` from the `tower_http` crate. This is a middleware that will log all requests that come into our server. I consider this to be essential, especially during development, so that we can see what is going on!
 
 I highly recommend reading the [Axum middleware documentation on ordering](https://docs.rs/axum/latest/axum/middleware/index.html#ordering) as it is very important to understand how the layers are applied, and in what order. This is a common source of confusion in my experience, as the order of middleware execution differs between calling `.layer()` on the `Router` and calling `.layer()` on the `ServiceBuilder`. Quoting the documentation:
 
@@ -153,11 +177,11 @@ I highly recommend reading the [Axum middleware documentation on ordering](https
 
 This is because the "top-to-bottom" ordering provided by `ServiceBuilder` is often more natural.
 
-Now, we aren't actually "running" the server yet, there is one more thing we should set up first.
+Now, we aren't actually _running_ the server yet, there is one more thing we should set up first.
 
 ### Tracing and Logging
 
-If we were to actually run our server, we wouldn't see anything output to the console. While we have used the `TraceLayer` middleware, and the `info!` macro, we haven't configured the logger to actually output anythingwhere we can see it. So let's do that now.
+If we were to actually run our server, we wouldn't see anything output to the console. While we have used the `TraceLayer` middleware, and the `info!` macro, we haven't configured the logger to actually output anything where we can see it. So let's do that now.
 
 I use the following snippet in most of my Axum projects. It sets up the logger to either accept the `RUST_LOG` environment variable, or fall back to some sensible defaults. Those sensible defaults include `DEBUG` level logging for the current crate, `DEBUG` logging for `tower_http` and `TRACE` logging for `axum::rejection` (we will get to what this even is in the future). This snippet is straight from the [Axum examples](https://github.com/tokio-rs/axum/blob/main/examples/tracing-aka-logging/src/main.rs) with only a tiny tweak so that I can copy-paste it without any changes.
 
@@ -181,15 +205,15 @@ With that out of the way, let's configure the server.
 
 > For those of you new to Rust (or maybe just new to async Rust), the `tokio::main` macro is a helper macro that sets up the Tokio runtime for you. You can read more about how that works [here](https://docs.rs/tokio-macros/latest/tokio_macros/attr.main.html).
 
-The code is pretty straightforward. We initiliase the logging before anything else. We then set up our application using our magical `Default` implementation, and then we run the app.
+The code is pretty straightforward. We initiliase the logging before anything else. We then set up our `ApplicationConfig` using our magical `Default` implementation, we crate the `Application` and then we run the server!
 
-Let's take it for a spin. I like to utilise `cargo watch` for this, as it will automatically recompile the code when it changes. Most developer workflows will use something like this to "hot reload" changes. If you don't already `cargo watch`, you can install it with `cargo install cargo-watch`.
+Let's take it for a spin. I like to utilise `cargo watch` for this, as it will automatically recompile the code when it changes. Most developer workflows will use something like this to "hot reload" changes. If you don't already have `cargo watch`, you can install it with `cargo install cargo-watch`.
 
 ```bash
 cargo watch -x run -w sidetracked
 ```
 
-You should now see some output in your terminal indicating that the server is listening on `127.0.0.1:3000`. We test our brand new servcer by hitting it with `curl -i http://localhost:3000` from another terminal. You should see something like this:
+You should now see some output in your terminal indicating that the server is listening on `127.0.0.1:3000`. We test our brand new server by hitting it with `curl -i http://localhost:3000` from another terminal. You should see something like this:
 
 ```txt
 ❯ curl -i http://localhost:3000
@@ -215,5 +239,5 @@ Perfect, as expected we get a `200` status code and a `Hello World` in the body.
 
 ## Next steps
 
-I think this is probably a logical stopping point otherwise it could, quite literally, go on forever. We have set up a basic project and are ready to start building out some more of `sidetracked`s features. In the next article we will start building out the API.
+I think this is probably a logical stopping point otherwise it could, quite literally, go on forever. We have set up a basic project and are ready to start building out some more features. In the next article we will start building out the API.
 

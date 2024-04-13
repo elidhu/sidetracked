@@ -3,15 +3,17 @@ pub mod web;
 // >@
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use web::application::Application;
+use web::application::{run, Application, ApplicationConfig};
 
 // @<main
 #[tokio::main]
 async fn main() {
     init_logging();
 
-    let app = Application::default();
-    app.run().await;
+    let config = ApplicationConfig::default();
+    let app = Application;
+
+    run(app, config).await;
 }
 // >@
 
