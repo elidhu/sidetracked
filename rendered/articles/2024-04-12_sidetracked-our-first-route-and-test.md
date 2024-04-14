@@ -60,7 +60,7 @@ Once that is complete, we then need to modify the `main.rs` file to import our l
 ```rust
 // ./sidetracked/src/main.rs
 
-use sidetracked_lib::web::application::Application;
+use sidetracked_lib::web::application::{run, Application, ApplicationConfig};
 ```
 
 Perfect, we are ready to proceed.
@@ -107,7 +107,89 @@ Pretty simple, nothing else is required. We can verify our setup by running `car
 
 ## Writing an Actual Test
 
-Now that we have created the requisite files, we can take another step towards defining our first test. So to write our test, we are going to need to do two things. First we will need to start the application, presumably in such a way that it won't conflict with other tests (i.e. not on the same port). Second we will need to make a request to the health check route, before finally making some assertions about the response.
+Now that we have created the requisite files, we can take another step towards defining our first test.
 
-Instead of me making up some crazy strategy to achieve this, let's use a crate that has already solved this for us, [Axum test](https://crates.io/crates/axum-test).
+What is it that we need to do in our test? Well, we ultimately want to check that we are getting the expected response from our health check route. In its current form it is just a simple route that returns a `200 OK` response when we make a `GET` request to `/health_check`.
+
+From this description we know we need to do the following:
+
+- Start the application
+- Make a request to the health check route
+- Assert that the response is a `200 OK`
+
+We will use the Arrange/Act/Assert pattern to write our test. This pattern is a common way to structure tests, and is a good way to ensure that your tests are readable and maintainable - in my opinion at least.
+
+Instead of me making up some crazy strategy to arrange the test, let's use a crate that has already solved this for us, [Axum test](https://crates.io/crates/axum-test).
+
+```bash
+cargo add --dev axum-test
+```
+
+We will create a small helper that will give us a test server that we can use to make requests to our application. This will be defined in the `helpers/mod.rs` file.
+
+```rust
+// ./sidetracked/tests/helpers/mod.rs
+
+#[cfg(test)]
+pub async fn new_test_app() -> TestServer {
+    let app = Application.router();
+
+    let config = TestServerConfig::builder()
+        // Use an actual HTTP transport on a random port.
+        .http_transport()
+        // Behave like a browser and save cookies between requests.
+        .save_cookies()
+        // We are testing a JSON API.
+        .default_content_type("application/json")
+        // Panic if the response is outside the 2XX range (Unless request marked as expected failure).
+        .expect_success_by_default()
+        .build();
+
+    TestServer::new_with_config(app, config).unwrap()
+}
+```
+
+I won't go in to too much detail here, it's fairly straightforward. We are creating a `TestServer` using a `TestServerConfig` and the `Router` from our `Application`. We have pre-emptively added some sensible defaults to the test server, like saving cookies, and setting the `Content-Type` to `application/json` as we are intending to build out a `JSON` API. These can all be overridden at the request level if required.
+
+Cool, now let's use our brand new test helper in the actual test. We have already create the `routes.rs` file under the `tests` directory, so let's define the test.
+
+```rust
+// ./sidetracked/tests/routes.rs
+
+#[cfg(test)]
+mod test_health_check {
+    use super::*;
+
+    #[tokio::test]
+    async fn it_should_return_200() {
+        // Arrange
+        let app = helpers::new_test_app().await;
+
+        // Act
+        let response = app.get("/health_check").await;
+
+        // Assert
+        response.assert_status(StatusCode::OK);
+    }
+}
+```
+
+And that's really all there is to it. 3 simple steps, create a test application, make a request, and assert the response. Let's run our test and see what happens!
+
+```txt
+---- test_health_check::it_should_return_200 stdout ----
+thread 'test_health_check::it_should_return_200' panicked at /Users/kglasson/.cargo/registry/src/index.crates.io-6f17d22bba15001f/axum-test-14.8.0/src/test_request.rs:589:48:
+Expect status code within 2xx range, got 404 (Not Found), for request GET /health_check
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_health_check::it_should_return_200
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+```
+
+As expected our test fails, the route is not implemented yet. Let's implement the route and see if we can get our test to pass. This is about as [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as I get, I promise.
+
+### Going for Green
 
