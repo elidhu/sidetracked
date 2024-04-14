@@ -1,5 +1,5 @@
 +++
-draft = true
+draft = false
 title = "Sidetracked: Our First Route and Test"
 [taxonomies]
 tags = ["sidetracked", "rust"]
@@ -155,4 +155,62 @@ test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; 
 As expected our test fails, the route is not implemented yet. Let's implement the route and see if we can get our test to pass. This is about as [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as I get, I promise.
 
 ### Going for Green
+
+So we need a route that maps a `GET` at `/health_check` to a handler that returns a `200 OK`. We will define this in a `handlers` module.
+
+```bash
+touch sidetracked/src/web/handlers.rs
+```
+
+Again, directly quoting the [Axum](https://docs.rs/axum/latest/axum/index.html#handlers) documentation, a handler in Axum is:
+
+> " In axum a “handler” is an async function that accepts zero or more “extractors” as arguments and returns something that can be converted into a response. "
+
+This is good news, as all we need is a simple async function
+
+```rust
+// @?handlerhealth_check.file
+
+@@handlerhealth_check
+```
+
+And let's wire up our route to use this handler. There are a few parts to the route. We can see that it has a path of `/health_check`, and that it uses an Axum helper function `get` to wrap our `health_check` handler. Axum provides a numer of these helpers, in particular there is one for each of the HTTP methods.
+
+```rust
+// @?applicationrouter.file
+
+@@applicationrouter
+```
+
+And now, let's try running our test again.
+
+```txt
+     Running tests/routes.rs (target/debug/deps/routes-e6d43ac78857dee1)
+
+running 1 test
+test test_health_check::it_should_return_200 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+```
+
+Nice, we have a passing test!
+
+Just for fun, let's spin up the application and make a request to the health check route.
+
+```bash
+cargo run
+```
+
+And then in another terminal:
+
+```txt
+❯ curl -i http://localhost:3000/health_check
+HTTP/1.1 200 OK
+content-length: 0
+date: Sun, 14 Apr 2024 13:43:53 GMT
+```
+
+Exactly what we expected. We are now in a good position to continue building out our application. We have a test in place that we can run to ensure that we are not breaking existing functionality, and we have a route that we can build upon.
+
+In the next article we will look at adding some functionality to our application.
 
