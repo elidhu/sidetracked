@@ -12,7 +12,7 @@ repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-12_sidetracked-o
 
 ## Refactoring
 
-I was planning on trying to avoid refactoring as much as possible. But I'm just a fallible human, writing these articles in parallel to Sidetracked - so I of course keep hitting things I didn't consider. Without further ado, let's refactor our crate into a library and a binary.
+I was planning on trying to avoid refactoring as much as possible. But I'm just a fallible human. I'm writing these articles in parallel to Sidetracked and so I (of course) keep hitting things I didn't consider or plan for. So, without further ado, let's refactor our crate into a library and a binary.
 
 First thing first, let's define this by updating our `Cargo.toml`.
 
@@ -22,9 +22,9 @@ First thing first, let's define this by updating our `Cargo.toml`.
 @@s/cargotomllibandbin
 ```
 
-A Rust crate can have as many binaries as we like, and at most one [library](https://rustc-dev-guide.rust-lang.org/backend/libs-and-metadata.html). As our snippet above shows we have defined a library and a binary. The entrypoint of the library will be located in `src/lib.rs` and the binary in `src/main.rs`. When we are done, the library will contain _almost all_ of our code except the main entrypoint for our application. This split enables us to now import the library into our binary, and more importantly into our _tests_.
+A Rust crate can have as many binaries as we like, and at most one [library](https://rustc-dev-guide.rust-lang.org/backend/libs-and-metadata.html). As our snippet above shows we have defined a library and a binary. The entrypoint of the library will be located in `src/lib.rs` and the binary in `src/main.rs`. When we are done, the library will contain _almost all_ of our code except the main entrypoint for our application. This split enables us to now import the library into our binary, and more importantly, into our _tests_.
 
-Now that we have the definitions in place, we need to adjust a few things in our code to ensure we are able to compile and run again. We defined a lib at `src/lib.rs` so let's create that:
+Now that we have the definitions in place, we need to adjust a few things in our code to ensure we are able to compile and run again. We defined a lib at `src/lib.rs` so let's actually create that:
 
 ```bash
 touch sidetracked/src/lib.rs
@@ -61,13 +61,13 @@ Perfect, we are ready to proceed.
 
 ## Testing Setup
 
-Rust has a great testing story, all of the required functionality for defining and running tests is built in. Once we have defined some tests we can simply `cargo test` to run them.
+Rust has a great testing story, all of the required functionality for defining and running tests is built in. Once we have defined some tests we can simply execute a `cargo test` to run them.
 
 Now the first question is, where should they go?
 
-It is quite common to see tests in the same file as the code they are testing, and we will do this for really specific tests, tests for a single function for example. However, for more complex tests, such as those that test a route, it is better to keep them separate. It enforces use of the public API, which can inform our architecture, and it saves having to debate where to put the test. It also provides an isolated place to define helper functions that can be used across multiple of these more complex tests. There is another consideration here, and that is whether you are testing private functions. If you are, then you will need to put the tests in the same file as the code, as private functions are not accessible outside of the module they are defined in.
+It is quite common to see tests in the same file as the code they are testing, and we will do this for really specific tests, tests for a single function for example. However, for more complex tests, such as those that test a route, it is better to keep them separate. It enforces use of the public API, which can inform our architecture, and it saves having to debate where to put the test. It also provides an isolated place to define helper functions that can be used across multiple of these more complex tests. There is another consideration here, and that is whether you are testing private functions. If you are, then you will need to put the tests in the same file as the code, as private functions are only accessible within the module they are defined in or its children.
 
-An interesting side-note about writing tests in the `tests/` directory is that each file is compiled in to a separate crate. This can produces some unexpected results when trying to share code between tests. The solution is to define the shared code in a separate module and import it into each test file. This is what we will do with a `helpers` module. You can read more about this in the [Rust book](https://doc.rust-lang.org/book/ch11-03-test-organization.html#submodules-in-integration-tests).
+An interesting side-note about writing tests in the `tests/` directory is that each file is compiled into a separate crate. This can produces some unexpected results when trying to share code between tests. The solution is to define the shared code in a separate module and import it into each test file (i.e. crate). This is what we will do with a `helpers` module. You can read more about this in the [Rust book](https://doc.rust-lang.org/book/ch11-03-test-organization.html#submodules-in-integration-tests).
 
 ```bash
 files="sidetracked/tests/routes.rs sidetracked/tests/helpers/mod.rs"
@@ -87,7 +87,7 @@ sidetracked/tests
 └── routes.rs
 ```
 
-This time I will step through wiring up the modules, in the future I will probably gloss over the `use` and `mod` statements and leave it as an exercise for the reader.
+This time I will step through wiring up the modules, in the future I will probably gloss over the `use` and `mod` statements and leave it as an exercise for the reader. It's mostly just IDE magic at this point anyway.
 
 So for our `routes.rs` file we will need to declare the module:
 
@@ -129,7 +129,7 @@ We will create a small helper that will give us a test server that we can use to
 
 I won't go in to too much detail here, it's fairly straightforward. We are creating a `TestServer` using a `TestServerConfig` and the `Router` from our `Application`. We have pre-emptively added some sensible defaults to the test server, like saving cookies, and setting the `Content-Type` to `application/json` as we are intending to build out a `JSON` API. These can all be overridden at the request level if required.
 
-Cool, now let's use our brand new test helper in the actual test. We have already create the `routes.rs` file under the `tests` directory, so let's define the test.
+Cool, now let's use our brand new test helper in the actual test. We have already created the `routes.rs` file under the `tests` directory, so let's define the test.
 
 ```rust
 // @?testhealthcheck.file
@@ -152,9 +152,9 @@ failures:
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 ```
 
-As expected our test fails, the route is not implemented yet. Let's implement the route and see if we can get our test to pass. This is about as [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as I get, I promise.
+Aaaand as expected, our test fails. We haven't implemented anything yet. Let's implement the route and see if we can get our test to pass. This is about as [TDD](https://en.wikipedia.org/wiki/Test-driven_development) as I get, I promise.
 
-### Going for Green
+## Going for Green
 
 So we need a route that maps a `GET` at `/health_check` to a handler that returns a `200 OK`. We will define this in a `handlers` module.
 
@@ -174,7 +174,7 @@ This is good news, as all we need is a simple async function
 @@handlerhealth_check
 ```
 
-And let's wire up our route to use this handler. There are a few parts to the route. We can see that it has a path of `/health_check`, and that it uses an Axum helper function `get` to wrap our `health_check` handler. Axum provides a numer of these helpers, in particular there is one for each of the HTTP methods.
+Let's wire up our route to use this handler. There are a few parts to the route. We can see that it has a path of `/health_check`, and that it uses an Axum helper function `get` to wrap our `health_check` handler. Axum provides a number of these helpers, in particular there is one for each of the HTTP methods.
 
 ```rust
 // @?applicationrouter.file
@@ -182,7 +182,7 @@ And let's wire up our route to use this handler. There are a few parts to the ro
 @@applicationrouter
 ```
 
-And now, let's try running our test again.
+Now, let's try running our test again.
 
 ```txt
      Running tests/routes.rs (target/debug/deps/routes-e6d43ac78857dee1)
@@ -193,7 +193,7 @@ test test_health_check::it_should_return_200 ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 ```
 
-Nice, we have a passing test!
+Magic, we have a passing test!
 
 Just for fun, let's spin up the application and make a request to the health check route.
 
