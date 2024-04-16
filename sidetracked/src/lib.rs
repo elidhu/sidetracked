@@ -1,0 +1,3 @@
+// @<modweb
+pub mod web;
+// >@

@@ -1,9 +1,8 @@
-// @<modweb
-pub mod web;
-// >@
-
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use web::application::{run, Application, ApplicationConfig};
+
+// @<mainuselib
+use sidetracked_lib::web::application::{run, Application, ApplicationConfig};
+// >@
 
 // @<main
 #[tokio::main]

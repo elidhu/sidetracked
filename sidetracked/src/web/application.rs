@@ -4,6 +4,8 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
+use super::handlers::health_check;
+
 // @<run
 /// Run the application
 pub async fn run(app: Application, config: ApplicationConfig) {
@@ -49,7 +51,9 @@ impl Application {
     pub fn router(&self) -> Router {
         // @<applicationrouter
         Router::new()
-            .route("/", get(|| async { "Hello, World!" }))
+            // Add a health check route
+            .route("/health_check", get(health_check))
+            // Add `TraceLayer` to log all incoming requests
             .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         // >@
     }
