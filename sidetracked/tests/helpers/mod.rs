@@ -1,11 +1,26 @@
 use axum_test::{TestServer, TestServerConfig};
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use jwt_authorizer::{layer::JwtSource, AuthorizerBuilder};
+use sha2::Sha256;
 
 use sidetracked_lib::web::application::Application;
+use sidetracked_lib::web::auth::Claims;
+
+// @<testsecret
+const TEST_SECRET: &str = "7750e0e7ad62179c3a5299f40ec6fb69fffa0b95aff0424955f654012e5cedb5";
+// >@
 
 // @<newtestapp
 #[cfg(test)]
 pub async fn new_test_app() -> TestServer {
-    let app = Application.router();
+    let authorizer = AuthorizerBuilder::<Claims>::from_secret(TEST_SECRET)
+        .jwt_source(JwtSource::AuthorizationHeader)
+        .build()
+        .await
+        .expect("Failed to build authorizer");
+
+    let app = Application::new(authorizer);
 
     let config = TestServerConfig::builder()
         // Use an actual HTTP transport on a random port.
@@ -18,6 +33,16 @@ pub async fn new_test_app() -> TestServer {
         .expect_success_by_default()
         .build();
 
-    TestServer::new_with_config(app, config).unwrap()
+    TestServer::new_with_config(app.router(), config).unwrap()
+}
+// >@
+
+// @<newtesttoken
+#[cfg(test)]
+pub async fn new_test_token(claims: Claims) -> String {
+    let key: Hmac<Sha256> =
+        Hmac::new_from_slice(TEST_SECRET.as_bytes()).expect("Failed to create key");
+
+    claims.sign_with_key(&key).expect("Failed to sign token")
 }
 // >@
