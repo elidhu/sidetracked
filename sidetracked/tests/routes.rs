@@ -4,7 +4,6 @@ mod helpers;
 
 use axum::http::{header::AUTHORIZATION, HeaderValue, StatusCode};
 
-
 use sidetracked_lib::web::auth::Claims;
 
 // @<testhealthcheck
@@ -57,6 +56,8 @@ mod test_profile {
             sub: "018eef43-1283-70dd-b738-5bc64b3313c5".to_string(),
             name: "Jason Asano".to_string(),
             iat: 1713411102,
+            // Set the expiration time to a time in the future. One day this may be a problem - but
+            // I don't think it is worth worrying about :)
             exp: 1913411102,
         };
 
@@ -75,6 +76,57 @@ mod test_profile {
         // Assert
         response.assert_status(StatusCode::OK);
         response.assert_json::<Claims>(&test_claims);
+    }
+    // >@
+
+    // @<testprofile401invalid
+    #[tokio::test]
+    async fn it_should_return_401_invalid_token() {
+        // Arrange
+        let mut app = helpers::new_test_app().await;
+        app.expect_failure();
+
+        // Add an invalid token to the Authorization header
+        app.add_header(
+            AUTHORIZATION,
+            HeaderValue::from_str("Bearer invalid_token").unwrap(),
+        );
+
+        // Act
+        let response = app.get("/profile").await;
+
+        // Assert
+        response.assert_status(StatusCode::UNAUTHORIZED);
+    }
+    // >@
+
+    // @<testprofile401expired
+    #[tokio::test]
+    async fn it_should_return_401_expired_token() {
+        // Arrange
+        let mut app = helpers::new_test_app().await;
+        app.expect_failure();
+
+        let test_claims = Claims {
+            sub: "018eef43-1283-70dd-b738-5bc64b3313c5".to_string(),
+            name: "Jason Asano".to_string(),
+            iat: 1713411102,
+            // Set the expiration time to a time in the past
+            exp: 1713411102,
+        };
+
+        let test_token = helpers::new_test_token(test_claims.clone()).await;
+
+        app.add_header(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {test_token}")).unwrap(),
+        );
+
+        // Act
+        let response = app.get("/profile").await;
+
+        // Assert
+        response.assert_status(StatusCode::UNAUTHORIZED);
     }
     // >@
 }

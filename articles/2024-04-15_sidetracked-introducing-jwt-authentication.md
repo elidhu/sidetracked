@@ -1,11 +1,11 @@
 +++
-draft = true
+draft = false
 title = "Sidetracked: Introducing JWT Authentication"
 [taxonomies]
 tags = ["sidetracked", "rust"]
 [extra]
 toc = true
-repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-15_introducting-jwt-authentication"
+repo_link = "https://github.com/elidhu/sidetracked/tree/2024-04-15_sidetracked-introducing-jwt-authentication"
 +++
 
  Now that we have a very basic application set up, we are going to add JWT based authentication to our app. I know, I know, it seems a little premature - but I really think this will help us flow into user and then todo creation. We will pretend we have externalised the login process to an IdP (Identity Provider) and expect that all requests to protected routes will contain a valid JWT, all we are going to do is validate it.<!-- more -->
@@ -87,7 +87,7 @@ Less interesting, but also important, we need to add a few more dependencies to 
 cargo add --dev jwt sha2 hmac
 ```
 
-## Setting up JWT Validation
+## Setting Up JWT Validation
 
 From the usage example in the documentation we see that we need to do the following things:
 
@@ -169,9 +169,11 @@ test test_health_check::it_should_return_200 ... ok
 test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
 ```
 
-Great! Our test is passing. This is only half of the picture though. We have a protected route, but no way to access it!
+Great! Our test is passing. We have proven that if we just make any old request against the protected `/profile` route, we get a `401 UNAUTHORIZED`.
 
-We need to add a test for when a JWT is provided. We are going to check 2 things in this test. Firstly, that the route returns a `200 OK` status code. Secondly, that the claims we expect are returned in the response body.
+## Some More Useful Tests
+
+Denying access to a route is all well and good, but we also need to allow access to the route when a valid JWT is provided, so let's add a test for that. We are going to check 2 things in this test. Firstly, that the route returns a `200 OK` status code. Secondly, that the claims we expect are returned in the response body.
 
 Let's create a little helper to minimise some of the awkwardness of working with the `Authorizer` and `Claims`. Firstly, lets hard code a secret into the tests that the `Authorizer` can use. We need a secret that we can use that is consistent between the `Authorizer` and the other helper we will write to sign our claims. This way we can generate a signed JWT with custom `Claims` that the `Authorizer` will accept, allowing us to test various scenarios.
 
@@ -183,7 +185,7 @@ Let's create a little helper to minimise some of the awkwardness of working with
 
 Following that we will write a helper to sign claims with the secret we have defined. It may not be obvious, but your IDE should help you here. The `.sign_with_key` method comes from importing `jwt::SignWithKey;` which has a bunch of blanked implementations which covers our `Claims` struct.
 
-> For those that are interested, the implementation applies to our `Claims` struct because `SignWithKey`has a [blanket implementation](https://doc.rust-lang.org/book/ch10-02-traits.html#using-trait-bounds-to-conditionally-implement-methods) for all types that implement `ToBase64` which in turn has a blanked implementation for all types that implement `Serialize`. This (in my opinion) is a super cool aspect of the Rust type system.
+> For those that are interested, the implementation applies to our `Claims` struct because `SignWithKey` has a [blanket implementation](https://doc.rust-lang.org/book/ch10-02-traits.html#using-trait-bounds-to-conditionally-implement-methods) for all types that implement `ToBase64` which in turn has a blanked implementation for all types that implement `Serialize`. This (in my opinion) is a super cool aspect of the Rust type system.
 
 So, back on track - let's define that helper.
 
@@ -212,4 +214,65 @@ With all of the above in place, we can now write our test for the `/profile` rou
 Let's briefly go over what this test actually does.
 
 First we create a `Claims` struct containing the appropriate information for the user we are pretending to be. We then use our `new_test_token` helper to sign these claims and create a JWT. We then make a request to the `/profile` route with the JWT in the Authorization header. Finally, we check that the response status is `200 OK` and that the response body contains the claims we expect.
+
+## A Few More Tests
+
+Now, for the sake of completion let's add a few more tests, and then we will run then to check all is as expected!
+
+The first test we will add is to check that we get a `401 UNAUTHORIZED` if we provide an invalid JWT. This is a good test to have as it will help us to ensure that our `Authorizer` is correctly rejecting invalid JWTs.
+
+```rust
+// @?testprofile401invalid.file
+
+@@testprofile401invalid
+```
+
+And finally, one test to check that expired JWTs are rejected.
+
+```rust
+// @?testprofile401expired.file
+
+@@testprofile401expired
+```
+
+Run them!
+
+```txt
+     Running tests/routes.rs (target/debug/deps/routes-a299ea667a35339c)
+
+running 5 tests
+test test_health_check::it_should_return_200 ... ok
+test test_profile::it_should_return_401_invalid_token ... ok
+test test_profile::it_should_return_401 ... ok
+test test_profile::it_should_return_401_expired_token ... ok
+test test_profile::it_should_return_200 ... ok
+```
+
+## Interacting with our Application
+
+Whilst the implementation is complete, and we have validated that the application behaves as we expect, it is always good to test it manually. As we now have authentication in place, we need to run our server with a shared secret defined in the `SIDETRACKED_SECRET` variable. Let's do that.
+
+```txt
+SIDETRACKED_SECRET=supersecret cargo run
+```
+
+Now with the same secret we need to use something to generate a valid JWT. As I suggested earlier I am going to use [JWT.IO](https://jwt.io/). You will need to craft the payload appropriately to match the `Claims` we expect, including a valid expiration time. Make sure you utilise the **same shared secret** as you have in your environment variable. Of course, if you have another method you would like to use, then go ahead and do that - also shoot me an email and let me know!
+
+Now, with your valid JWT, you can make a request to the `/profile` route. You should get a `200 OK` response with the claims you expect.
+
+For me, that looked something like this:
+
+```txt
+❯ curl -i -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ikphc29uIEFzYW5vIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjI5MTYyMzkwMjJ9.IO1SIjRQpjFrI3WQUzBb-PEuLzbKo1B9N3G2b6nD-gA" localhost:3000/profile
+HTTP/1.1 200 OK
+content-type: application/json
+content-length: 75
+date: Thu, 16 May 2024 13:44:48 GMT
+
+{"sub":"1234567890","name":"Jason Asano","iat":1516239022,"exp":2916239022}
+```
+
+Magic!
+
+In the next article we will look at doing something with these authenticated users.
 
