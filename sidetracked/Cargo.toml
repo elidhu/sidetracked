@@ -20,7 +20,9 @@ name = "sidetracked"
 anyhow = "1.0.82"
 axum = { version = "0.7.5", features = ["macros"] }
 chrono = "0.4.37"
+jwt-authorizer = "0.14.0"
 serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.116"
 tokio = { version = "1.37.0", features = ["full"] }
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = ["trace"] }
@@ -33,4 +35,7 @@ tracing-subscriber = { version = "0.3.18", features = [
 
 [dev-dependencies]
 axum-test = "14.8.0"
+hmac = "0.12.1"
+jwt = "0.16.0"
+sha2 = "0.10.8"
 # >@

@@ -10,7 +10,10 @@ async fn main() {
     init_logging();
 
     let config = ApplicationConfig::default();
-    let app = Application;
+
+    let app = Application::new_with_default_authorizer()
+        .await
+        .expect("Failed to build application");
 
     run(app, config).await;
 }
